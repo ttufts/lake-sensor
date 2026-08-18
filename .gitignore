@@ -1,0 +1,9 @@
+.pio/
+.vscode/
+.idea/
+.DS_Store
+firmware/**/include/config.h
+firmware/**/include/secrets.h
+*.pyc
+__pycache__/
+
