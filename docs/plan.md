@@ -13,6 +13,8 @@ Exit: host tests pass and node firmware compiles when PlatformIO is available.
 
 - Validate GPIO36/Vext behavior and boost startup with a dummy load.
 - Confirm ADS1115 address, gain, rate, voltage accuracy, and noisy-sample output.
+- Validate DS18B20 discovery, readings, conversion timing, disconnect behavior,
+  and lack of back-powering after Vext shuts off.
 - Measure sensor warm-up and implement a settling diagnostic.
 - Validate V3/V3.2 battery-divider handling and calibration.
 
@@ -31,6 +33,7 @@ Exit: reliable delivery over the real lake-to-house path with diagnosable loss.
 ## Milestone 4 — MQTT gateway
 
 - Add externalized Wi-Fi/MQTT configuration and reconnection state machines.
+- Decode and publish water temperature in state and diagnostic payloads.
 - Publish retained QoS-1 state and separate availability/diagnostic topics.
 - Reject malformed packets and avoid overwriting the latest valid state with
   invalid sensor readings.
@@ -49,6 +52,8 @@ Exit: sleep below 100 µA and a documented runtime projection from measured data
 ## Milestone 6 — Calibration and field pilot
 
 - Fit and retain a multi-point calibration dataset and residual analysis.
+- Validate temperature at ice and room-temperature points; retain ROM address
+  and measured offset.
 - Install fixed probe/stilling well and establish a manual benchmark.
 - Monitor drift, condensation/venting, packet loss, and battery voltage.
 
@@ -60,4 +65,3 @@ agreement for trend monitoring.
 Surge protection, winter-safe solar charging, enclosure environmental testing,
 remote configuration, and deciding whether LoRaWAN/Meshtastic integration has a
 long-term advantage all follow the functional field pilot.
-

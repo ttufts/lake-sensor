@@ -42,6 +42,7 @@ EncodedPacketV1 encode_packet(const PacketV1& packet) {
   put_u16(out, packet.sense_mv);
   put_u16(out, packet.loop_ua);
   put_u16(out, packet.battery_mv);
+  put_u16(out, static_cast<uint16_t>(packet.temperature_centi_c));
   put_u16(out, packet.flags);
   return encoded;
 }
@@ -56,9 +57,9 @@ bool decode_packet(const uint8_t* data, std::size_t size, PacketV1& packet) {
   packet.sense_mv = get_u16(in);
   packet.loop_ua = get_u16(in);
   packet.battery_mv = get_u16(in);
+  packet.temperature_centi_c = static_cast<int16_t>(get_u16(in));
   packet.flags = get_u16(in);
   return true;
 }
 
 }  // namespace lake
-

@@ -2,6 +2,8 @@
 
 - Mount the probe below expected minimum water and above sediment in a fixed,
   perforated PVC stilling well.
+- Secure the temperature probe beside the pressure probe without obstructing
+  the pressure port.
 - Put electronics above plausible flood level in a shaded, UV-resistant,
   vented weatherproof enclosure with strain relief and desiccant.
 - Keep boost switching parts away from the ADS1115 and antenna.
@@ -12,6 +14,5 @@
   added; do not attach a panel directly to the battery, USB, or 5 V pin.
 
 Before outdoor deployment, record actual sleep current, wake-cycle energy,
-packet loss at the lake-to-house path, battery calibration, and manual gauge
-agreement against the acceptance criteria in `design.md`.
-
+packet loss at the lake-to-house path, battery calibration, temperature-probe
+ROM address/offset, and manual gauge agreement against `design.md`.

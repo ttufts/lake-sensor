@@ -13,10 +13,10 @@ bool near(float actual, float expected, float tolerance = 0.0001F) {
 }
 
 int main() {
-  lake::PacketV1 source{7, 0x12345678U, -125, 400, 4000, 3912,
+  lake::PacketV1 source{7, 0x12345678U, -125, 400, 4000, 3912, 2375,
                         lake::kSensorUndercurrent};
   const auto bytes = lake::encode_packet(source);
-  static_assert(bytes.size() == 20);
+  static_assert(bytes.size() == 22);
   assert(bytes[0] == 0x4B && bytes[1] == 0x4C);
   lake::PacketV1 decoded{};
   assert(lake::decode_packet(bytes.data(), bytes.size(), decoded));
@@ -24,6 +24,7 @@ int main() {
   assert(decoded.sequence == source.sequence);
   assert(decoded.depth_mm == source.depth_mm);
   assert(decoded.battery_mv == source.battery_mv);
+  assert(decoded.temperature_centi_c == source.temperature_centi_c);
   assert(!lake::decode_packet(bytes.data(), bytes.size() - 1, decoded));
 
   float samples[] = {99.0F, 1.0F, 1.1F, 0.9F, -50.0F};

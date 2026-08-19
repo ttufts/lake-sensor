@@ -8,7 +8,7 @@ namespace lake {
 
 constexpr uint16_t kPacketMagic = 0x4C4B;  // "LK" on the wire, little-endian.
 constexpr uint8_t kPacketVersion = 1;
-constexpr std::size_t kPacketV1Size = 20;
+constexpr std::size_t kPacketV1Size = 22;
 
 enum StatusFlag : uint16_t {
   kSensorUndercurrent = 1U << 0,
@@ -19,6 +19,7 @@ enum StatusFlag : uint16_t {
   kSensorUnsettled = 1U << 5,
   kCalibrationInvalid = 1U << 6,
   kRetryPacket = 1U << 7,
+  kTemperatureInvalid = 1U << 8,
 };
 
 struct PacketV1 {
@@ -28,6 +29,7 @@ struct PacketV1 {
   uint16_t sense_mv = 0;
   uint16_t loop_ua = 0;
   uint16_t battery_mv = 0;
+  int16_t temperature_centi_c = 0;
   uint16_t flags = 0;
 };
 

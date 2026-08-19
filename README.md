@@ -1,7 +1,8 @@
 # LoRa Lake-Level Monitor
 
 Battery-powered lake-level monitoring with a Heltec WiFi LoRa 32 V3/V3.2, a
-4–20 mA submersible pressure transmitter, and a house-side LoRa/MQTT gateway.
+4–20 mA submersible pressure transmitter, a waterproof DS18B20 water-temperature
+probe, and a house-side LoRa/MQTT gateway.
 
 The lake node wakes every 15 minutes, powers the sensor and ADS1115 through the
 Heltec's switched Vext rail, filters the pressure reading, transmits a compact
@@ -15,6 +16,7 @@ Early bench firmware. The initial node implementation includes:
 - Vext power sequencing on GPIO36.
 - ADS1115 acquisition on GPIO4/GPIO5 with trimmed-mean filtering.
 - 4–20 mA conversion, calibration, and fault flags.
+- DS18B20 water-temperature acquisition during the pressure warm-up window.
 - V3.2 battery-divider sampling behind a compile-time setting.
 - Explicit, little-endian version-1 packet serialization.
 - SX1262 transmission through RadioLib and timer deep sleep.
@@ -34,11 +36,13 @@ Heltec board revision.
 | Current shunt | 100 Ω, 0.1% |
 | Sensor supply | 3.3 V Vext to adjustable 24 V boost converter |
 | Sensor | Two-wire, loop-powered 4–20 mA, nominal 0–5 m |
+| Temperature | Externally powered waterproof DS18B20 probe on GPIO6 |
 | Battery | One protected 1S 18650 |
 | Initial interval | 15 minutes |
 
 See [docs/wiring.md](docs/wiring.md) before assembling hardware and
 [docs/design.md](docs/design.md) for system decisions and acceptance criteria.
+The complete parts list and current sourcing notes are in [docs/bom.md](docs/bom.md).
 
 ## Build and test
 
@@ -80,4 +84,3 @@ Use a protected cell, verify the SH1.25 battery-lead polarity with a multimeter,
 never connect cells in series to the Heltec, and never connect the boost's 24 V
 output to the Heltec or ADS1115. Keep the sensor vent dry and above flood level
 if the transmitter is vented.
-

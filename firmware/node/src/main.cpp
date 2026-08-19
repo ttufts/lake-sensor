@@ -3,6 +3,8 @@
 #include <Wire.h>
 #include <Adafruit_ADS1X15.h>
 #include <RadioLib.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include <esp_sleep.h>
 
 #include <algorithm>
@@ -20,6 +22,8 @@ SPIClass radio_spi(FSPI);
 SX1262 radio = new Module(node_pins::kLoRaNss, node_pins::kLoRaDio1,
                           node_pins::kLoRaReset, node_pins::kLoRaBusy,
                           radio_spi);
+OneWire temperature_bus(node_pins::kTemperatureData);
+DallasTemperature temperature_sensors(&temperature_bus);
 
 namespace {
 
@@ -34,6 +38,13 @@ int32_t clamp_i32(float value) {
   if (value >= 2147483647.0F) return INT32_MAX;
   if (value <= -2147483648.0F) return INT32_MIN;
   return static_cast<int32_t>(std::lround(value));
+}
+
+int16_t clamp_i16(float value) {
+  if (!std::isfinite(value)) return 0;
+  if (value >= 32767.0F) return INT16_MAX;
+  if (value <= -32768.0F) return INT16_MIN;
+  return static_cast<int16_t>(std::lround(value));
 }
 
 uint16_t read_battery_mv() {
@@ -53,19 +64,39 @@ void sensor_power(bool enabled) {
   digitalWrite(node_pins::kVextControl, enabled ? LOW : HIGH);
 }
 
-lake::Measurement acquire_measurement(uint16_t& flags) {
+lake::Measurement acquire_measurement(uint16_t& flags, float& temperature_c) {
   sensor_power(true);
   delay(75);
+  temperature_sensors.begin();
+  const bool has_temperature_sensor = temperature_sensors.getDeviceCount() > 0;
+  if (!has_temperature_sensor) {
+    flags |= lake::kTemperatureInvalid;
+  } else {
+    temperature_sensors.setResolution(node_config::kTemperatureResolutionBits);
+    temperature_sensors.setWaitForConversion(false);
+    temperature_sensors.requestTemperatures();
+  }
   Wire.begin(node_pins::kI2cSda, node_pins::kI2cScl);
   if (!ads.begin(node_config::kAds1115Address, &Wire)) {
     flags |= lake::kAds1115Missing;
     Wire.end();
+    pinMode(node_pins::kTemperatureData, INPUT);
     sensor_power(false);
     return {};
   }
   ads.setGain(GAIN_ONE);
   ads.setDataRate(RATE_ADS1115_128SPS);
   delay(node_config::kSensorWarmupMs);
+
+  temperature_c = has_temperature_sensor
+                      ? temperature_sensors.getTempCByIndex(0)
+                      : DEVICE_DISCONNECTED_C;
+  if (!std::isfinite(temperature_c) || temperature_c == DEVICE_DISCONNECTED_C ||
+      temperature_c < node_config::kTemperatureMinC ||
+      temperature_c > node_config::kTemperatureMaxC) {
+    flags |= lake::kTemperatureInvalid;
+    temperature_c = 0.0F;
+  }
 
   float samples[node_config::kAdcSampleCount];
   for (int i = 0; i < node_config::kAdcSampleCount; ++i) {
@@ -79,6 +110,7 @@ lake::Measurement acquire_measurement(uint16_t& flags) {
   const float stddev = lake::sample_stddev(raw_samples,
                                            node_config::kAdcSampleCount, mean);
   Wire.end();
+  pinMode(node_pins::kTemperatureData, INPUT);
   pinMode(node_pins::kI2cSda, INPUT);
   pinMode(node_pins::kI2cScl, INPUT);
   sensor_power(false);
@@ -138,7 +170,8 @@ void setup() {
   if (battery_mv != 0 && battery_mv < node_config::kBatteryLowMv) {
     flags |= lake::kBatteryLow;
   }
-  const lake::Measurement measurement = acquire_measurement(flags);
+  float temperature_c = 0.0F;
+  const lake::Measurement measurement = acquire_measurement(flags, temperature_c);
   lake::PacketV1 packet{};
   packet.node_id = node_config::kNodeId;
   packet.sequence = sequence_number;
@@ -146,12 +179,13 @@ void setup() {
   packet.sense_mv = clamp_u16(measurement.sense_v * 1000.0F);
   packet.loop_ua = clamp_u16(measurement.loop_ma * 1000.0F);
   packet.battery_mv = battery_mv;
+  packet.temperature_centi_c = clamp_i16(temperature_c * 100.0F);
   packet.flags = flags;
 
   if (node_config::kSerialDebug) {
-    Serial.printf("seq=%lu depth=%.3f m loop=%.3f mA battery=%u mV flags=0x%04x\n",
+    Serial.printf("seq=%lu depth=%.3f m loop=%.3f mA water=%.2f C battery=%u mV flags=0x%04x\n",
                   static_cast<unsigned long>(packet.sequence),
-                  measurement.depth_m, measurement.loop_ma,
+                  measurement.depth_m, measurement.loop_ma, temperature_c,
                   packet.battery_mv, packet.flags);
   }
   transmit(packet);
@@ -159,4 +193,3 @@ void setup() {
 }
 
 void loop() {}
-

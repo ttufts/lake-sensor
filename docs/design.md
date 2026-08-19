@@ -13,13 +13,15 @@ shape or survey-grade elevation without field calibration.
 protected 1S 18650
   -> Heltec WiFi LoRa 32 V3/V3.2
      -> switched 3.3 V Vext -> ADS1115
+                            -> waterproof DS18B20 temperature probe
                             -> 3.3-to-24 V boost -> 4–20 mA sensor
      -> SX1262 raw LoRa ~915 MHz
         -> mains-powered Heltec gateway -> Wi-Fi -> MQTT
 ```
 
 The lake node does not use Wi-Fi. It wakes, reads the battery, enables Vext,
-waits for the sensor, samples the ADC, disables Vext, transmits, then sleeps.
+starts a water-temperature conversion while the pressure sensor warms, samples
+both sensors, disables Vext, transmits, then sleeps.
 Turning the boost off before transmitting separates two noisy/high-current
 phases and is a firmware invariant.
 
@@ -54,9 +56,10 @@ layout is never sent over the air.
 | 12 | 2 | Sense voltage | Millivolts |
 | 14 | 2 | Loop current | Microamps |
 | 16 | 2 | Battery voltage | Millivolts |
-| 18 | 2 | Flags | Status mask |
+| 18 | 2 | Water temperature | Signed hundredths of a degree Celsius |
+| 20 | 2 | Flags | Status mask |
 
-The packet is 20 bytes. The physical-layer CRC remains enabled. Status bits are:
+The packet is 22 bytes. The physical-layer CRC remains enabled. Status bits are:
 
 | Bit | Meaning |
 |---:|---|
@@ -68,6 +71,17 @@ The packet is 20 bytes. The physical-layer CRC remains enabled. Status bits are:
 | 5 | Sensor unsettled |
 | 6 | Calibration invalid |
 | 7 | Retry packet |
+| 8 | Temperature sensor missing/invalid |
+
+## Water-temperature channel
+
+The baseline probe is a three-wire waterproof DS18B20 on GPIO6. VDD and its
+4.7 kΩ data pull-up connect to Vext, so the probe is unpowered during deep
+sleep. External power is preferred over parasite power for cable reliability.
+At 12-bit resolution conversion can take up to 750 ms, so firmware requests it
+before the existing three-second pressure warm-up and reads it afterward with
+no additional nominal awake time. The initial plausibility range is -20 to
++50 °C.
 
 ## Initial radio settings
 
@@ -88,6 +102,7 @@ complete-board sleep current must be measured.
 
 - Exact Heltec revision and V3.2 battery-divider behavior.
 - Sensor lead polarity, venting, actual warm-up, and repeatability.
+- Temperature-probe authenticity, cable integrity, offset, and seal quality.
 - Whether the selected boost starts from Vext at 20 mA loop output.
 - Actual sleep current and best radio settings for the path.
 - Winter-safe charging strategy.
@@ -97,9 +112,10 @@ complete-board sleep current must be measured.
 - 24.0 V boost output within about ±0.5 V across 4–20 mA load.
 - No Heltec reset during boost startup.
 - ADS1115 agrees with a calibrated multimeter within 0.5%.
+- Water temperature agrees with a trusted reference within 0.5 °C initially;
+  disconnects set the temperature-invalid flag.
 - Fixed-depth repeatability is initially within 1–2 cm after filtering.
 - Open/disconnected sensor conditions produce clear faults.
 - Vext is off in deep sleep; complete-node sleep current is below 100 µA.
 - Reliable actual-path delivery with sequence gaps observable.
 - MQTT retains the latest valid reading and does not replace it with invalid data.
-

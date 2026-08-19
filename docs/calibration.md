@@ -24,3 +24,10 @@ water head.
 Compare weekly during initial deployment and recalibrate after the sensor is
 moved, replaced, buried, or its vent arrangement changes.
 
+## Temperature validation
+
+Record the DS18B20's unique ROM address before installation. Compare candidate
+probes in well-stirred ice water and beside a trusted reference at room
+temperature. Record offsets and reject unstable outliers. Treat the DS18B20's
+85 °C power-on value as invalid. Repeat validation after cable or encapsulation
+repairs.
