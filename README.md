@@ -16,6 +16,10 @@ Early bench firmware. The initial node implementation includes:
 
 - A verified bidirectional 915 MHz RAK4631-to-Heltec bench link with sequence
   numbers, ACKs, RSSI, and SNR diagnostics.
+- Heltec gateway firmware that validates packets, acknowledges them, joins
+  Wi-Fi, and publishes retained JSON state and availability over MQTT.
+- RAK mock-node firmware using a potentiometer for depth and a DHT22 for live
+  temperature while the production sensors are unavailable.
 
 - Vext power sequencing on GPIO36.
 - ADS1115 acquisition on GPIO4/GPIO5 with trimmed-mean filtering.
@@ -48,6 +52,8 @@ Heltec board revision.
 See [docs/wiring.md](docs/wiring.md) before assembling hardware and
 [docs/design.md](docs/design.md) for system decisions and acceptance criteria.
 The complete parts list and current sourcing notes are in [docs/bom.md](docs/bom.md).
+The temporary DHT22 and potentiometer setup is in
+[docs/mock-sensors.md](docs/mock-sensors.md).
 
 ## Build and test
 
@@ -83,6 +89,19 @@ Serial device names may change after reconnecting. The RAK transmits numbered
 test frames every three seconds; the Heltec receives and acknowledges them.
 See [docs/link-test.md](docs/link-test.md) for settings and the validated result.
 
+For the MQTT gateway, copy the example configuration and fill in local values:
+
+```sh
+cp firmware/gateway/include/gateway_config.example.h \
+  firmware/gateway/include/gateway_config.h
+pio run -e gateway
+pio run -e gateway -t upload --upload-port /dev/cu.usbserial-0001
+```
+
+`gateway_config.h` is ignored by Git. Valid node packets are published as
+retained JSON to `lake-monitor/node/<node-id>/state`; gateway status is retained
+at `lake-monitor/gateway/<gateway-id>/availability`.
+
 The firmware defaults are intentionally explicit in
 [`firmware/node/include/config.example.h`](firmware/node/include/config.example.h).
 Copy it to `lake_node_config.h` only when local overrides are needed;
@@ -97,6 +116,7 @@ firmware/node/           Battery-node firmware
 firmware/gateway/        Gateway placeholder for the next firmware milestone
 firmware/rak_link_test/  RAK4631 LoRa transmitter/ACK test
 firmware/heltec_link_test/ Heltec LoRa receiver/ACK test
+firmware/rak_mock_node/   Potentiometer/DHT22 sensor simulator
 docs/                    Design, wiring, calibration, deployment, and plan
 scripts/                 Host test and later calibration/power tools
 test/                    Native C++ tests

@@ -4,6 +4,7 @@
 .DS_Store
 firmware/**/include/lake_node_config.h
 firmware/**/include/secrets.h
+firmware/gateway/include/gateway_config.h
 *.pyc
 __pycache__/
 backups/

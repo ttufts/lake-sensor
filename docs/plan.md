@@ -26,6 +26,7 @@ open/overcurrent/rail faults are repeatable.
 - [x] Establish a bidirectional raw-LoRa bench link from the RAK4631 lake-node
   candidate to the Heltec gateway candidate.
 - [x] Verify sequence-numbered frames, ACKs, RSSI, and SNR on both consoles.
+- [x] Send version-1 mock sensor packets and suppress duplicate MQTT publishes.
 - Implement gateway packet receiver/decoder and serial diagnostics.
 - Add ACK schema, receive window, retry limit, and retry flag.
 - Log RSSI/SNR, duplicates, malformed packets, and sequence gaps.
@@ -42,7 +43,8 @@ not need a continuous GPS energy cost.
 
 ## Milestone 4 — MQTT gateway
 
-- Add externalized Wi-Fi/MQTT configuration and reconnection state machines.
+- [x] Add externalized Wi-Fi/MQTT configuration and reconnection state machines.
+- [x] Publish retained version-1 state JSON and gateway availability.
 - Decode and publish water temperature in state and diagnostic payloads.
 - Publish retained QoS-1 state and separate availability/diagnostic topics.
 - Reject malformed packets and avoid overwriting the latest valid state with
@@ -50,6 +52,9 @@ not need a continuous GPS energy cost.
 - Document Home Assistant/InfluxDB integration and gateway operations.
 
 Exit: broker restarts and Wi-Fi interruptions recover without manual action.
+
+Home Assistant entity/discovery support is deferred to issue #14 after the
+broker path has been exercised with real credentials.
 
 ## Milestone 5 — Power characterization
 
