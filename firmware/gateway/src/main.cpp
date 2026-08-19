@@ -27,6 +27,28 @@ uint32_t last_wifi_attempt_ms = 0;
 uint32_t last_mqtt_attempt_ms = 0;
 uint32_t last_sequence[256]{};
 bool sequence_seen[256]{};
+bool discovery_published[256]{};
+
+struct DiscoverySensor {
+  const char* object_id;
+  const char* name;
+  const char* json_key;
+  const char* unit;
+  const char* device_class;
+  const char* state_class;
+  const char* entity_category;
+};
+
+constexpr DiscoverySensor kDiscoverySensors[] = {
+    {"depth", "Lake Level", "depth_m", "m", "distance", "measurement", ""},
+    {"temperature", "Temperature", "temperature_c", "°C", "temperature", "measurement", ""},
+    {"battery", "Battery Voltage", "battery_v", "V", "voltage", "measurement", "diagnostic"},
+    {"loop_current", "Loop Current", "loop_ma", "mA", "current", "measurement", "diagnostic"},
+    {"rssi", "LoRa RSSI", "rssi_dbm", "dBm", "signal_strength", "measurement", "diagnostic"},
+    {"snr", "LoRa SNR", "snr_db", "dB", "", "measurement", "diagnostic"},
+    {"flags", "Status Flags", "flags", "", "", "", "diagnostic"},
+    {"sequence", "Sequence", "sequence", "", "", "", "diagnostic"},
+};
 
 void make_topic(char* out, size_t size, uint8_t node_id, const char* suffix) {
   snprintf(out, size, "%s/node/%u/%s", gateway_config::kTopicPrefix, node_id,
@@ -66,11 +88,60 @@ void send_ack(uint32_t sequence) {
                 state);
 }
 
+bool publish_discovery(uint8_t node_id) {
+  if (discovery_published[node_id]) return true;
+  char state_topic[128];
+  char availability_topic[128];
+  char discovery_topic[160];
+  char payload[768];
+  make_topic(state_topic, sizeof(state_topic), node_id, "state");
+  snprintf(availability_topic, sizeof(availability_topic),
+           "%s/gateway/%s/availability", gateway_config::kTopicPrefix,
+           gateway_config::kGatewayId);
+  for (const auto& sensor : kDiscoverySensors) {
+    snprintf(discovery_topic, sizeof(discovery_topic),
+             "homeassistant/sensor/lake_node_%u/%s/config", node_id,
+             sensor.object_id);
+    snprintf(payload, sizeof(payload),
+             "{\"name\":\"%s\",\"unique_id\":\"lake_node_%u_%s\","
+             "\"state_topic\":\"%s\",\"value_template\":"
+             "\"{{ value_json.%s }}\",\"availability_topic\":\"%s\","
+             "\"device\":{\"identifiers\":[\"lake_node_%u\"],"
+             "\"name\":\"Lake Monitor Node %u\",\"manufacturer\":"
+             "\"Lake Monitor\",\"model\":\"RAK4631 lake node\"}%s%s%s%s%s%s}",
+             sensor.name, node_id, sensor.object_id, state_topic,
+             sensor.json_key, availability_topic, node_id, node_id,
+             sensor.unit[0] ? ",\"unit_of_measurement\":\"" : "",
+             sensor.unit, sensor.unit[0] ? "\"" : "",
+             sensor.device_class[0] ? ",\"device_class\":\"" : "",
+             sensor.device_class, sensor.device_class[0] ? "\"" : "");
+    // Append optional state/entity fields separately to keep the table readable.
+    const size_t used = strlen(payload);
+    if (used == 0 || payload[used - 1] != '}') return false;
+    payload[used - 1] = '\0';
+    snprintf(payload + used - 1, sizeof(payload) - used + 1,
+             "%s%s%s%s%s%s}",
+             sensor.state_class[0] ? ",\"state_class\":\"" : "",
+             sensor.state_class, sensor.state_class[0] ? "\"" : "",
+             sensor.entity_category[0] ? ",\"entity_category\":\"" : "",
+             sensor.entity_category,
+             sensor.entity_category[0] ? "\"" : "");
+    if (!mqtt.publish(discovery_topic, payload, true)) {
+      Serial.printf("discovery publish failed: %s\n", sensor.object_id);
+      return false;
+    }
+  }
+  discovery_published[node_id] = true;
+  Serial.printf("Home Assistant discovery published for node %u\n", node_id);
+  return true;
+}
+
 void publish_packet(const lake::PacketV1& packet, float rssi, float snr) {
   if (!mqtt.connected()) {
     Serial.println("mqtt offline; packet not published");
     return;
   }
+  if (!publish_discovery(packet.node_id)) return;
   char topic[128];
   char payload[384];
   make_topic(topic, sizeof(topic), packet.node_id, "state");
@@ -95,7 +166,7 @@ void setup() {
   delay(1000);
   WiFi.mode(WIFI_STA);
   mqtt.setServer(gateway_config::kMqttHost, gateway_config::kMqttPort);
-  mqtt.setBufferSize(512);
+  mqtt.setBufferSize(1024);
   radio_spi.begin(node_pins::kLoRaSck, node_pins::kLoRaMiso,
                   node_pins::kLoRaMosi, node_pins::kLoRaNss);
   const int state = radio.begin(kFrequencyMhz, kBandwidthKhz,

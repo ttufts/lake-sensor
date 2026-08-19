@@ -53,8 +53,8 @@ not need a continuous GPS energy cost.
 
 Exit: broker restarts and Wi-Fi interruptions recover without manual action.
 
-Home Assistant entity/discovery support is deferred to issue #14 after the
-broker path has been exercised with real credentials.
+Home Assistant MQTT Discovery entities are implemented. Issue #14 retains the
+remaining dashboard, alerting, documentation, and offline-behavior work.
 
 ## Milestone 5 — Power characterization
 

@@ -101,6 +101,10 @@ pio run -e gateway -t upload --upload-port /dev/cu.usbserial-0001
 `gateway_config.h` is ignored by Git. Valid node packets are published as
 retained JSON to `lake-monitor/node/<node-id>/state`; gateway status is retained
 at `lake-monitor/gateway/<gateway-id>/availability`.
+The gateway also publishes retained Home Assistant MQTT Discovery records when
+it first sees a node after boot. Home Assistant groups the resulting level,
+temperature, battery, loop-current, radio, status, and sequence entities under
+one `Lake Monitor Node <id>` device.
 
 The firmware defaults are intentionally explicit in
 [`firmware/node/include/config.example.h`](firmware/node/include/config.example.h).
