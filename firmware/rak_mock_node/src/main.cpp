@@ -10,7 +10,8 @@
 namespace {
 constexpr uint8_t kNodeId = 1;
 constexpr uint8_t kDhtPin = WB_IO1;
-constexpr uint8_t kPotPin = WB_A0;
+// RAK19007 J11 exposes AIN1 (the older RAK5005-O exposed AIN0).
+constexpr uint8_t kPotPin = WB_A1;
 constexpr uint8_t kAckType = 2;
 constexpr size_t kAckSize = 7;
 

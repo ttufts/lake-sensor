@@ -14,28 +14,29 @@ rail; RAK4631 GPIO and analog inputs are not 5 V tolerant.
 ```text
 RAK WisBlock IO header                 DHT22 (front grille facing you)
 
-3V3  -------------------------------- pin 1 VCC
+VDD (J12, 3.3 V) -------------------- pin 1 VCC
 WB_IO1 ------------------------------- pin 2 DATA
-          +--- 4.7–10 kΩ resistor ---- 3V3
+          +--- 4.7–10 kΩ resistor ---- VDD
 GND  -------------------------------- pin 4 GND
                                        pin 3 unused
 
 RAK WisBlock IO header                 potentiometer
 
-3V3  -------------------------------- one outside leg
-WB_A0 -------------------------------- center leg / wiper
+VDD (J12, 3.3 V) -------------------- one outside leg
+AIN1 (J11 / firmware `WB_A1`) -------- center leg / wiper
 GND  -------------------------------- other outside leg
 ```
 
 Many three-pin DHT22 breakout modules already include the pull-up resistor. For
-those, connect module `+` to 3V3, `OUT`/`DATA` to `WB_IO1`, and `-` to GND; do
+those, connect module `+` to VDD, `OUT`/`DATA` to `WB_IO1`, and `-` to GND; do
 not add another resistor. A bare four-pin DHT22 normally needs the shown
 pull-up. Swapping the potentiometer's outside legs only reverses knob direction.
 A value from 1 kΩ through 100 kΩ is suitable; 10 kΩ is a conventional choice.
 
-On common RAK19007/RAK19001 WisBlock base boards, `WB_IO1` and `WB_A0` are
-available on the IO header. Follow the printed signal labels rather than raw
-nRF52840 pin numbers.
+On the RAK19007, J12 `VDD` is 3.3 V and J11 exposes `AIN1`; the firmware name
+for that analog input is `WB_A1`. Older WisBlock bases can expose `AIN0`
+instead, so follow the printed signal labels rather than raw nRF52840 pin
+numbers.
 
 ## Flash and observe
 
