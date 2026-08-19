@@ -23,12 +23,22 @@ open/overcurrent/rail faults are repeatable.
 
 ## Milestone 3 — LoRa link and reliability
 
+- [x] Establish a bidirectional raw-LoRa bench link from the RAK4631 lake-node
+  candidate to the Heltec gateway candidate.
+- [x] Verify sequence-numbered frames, ACKs, RSSI, and SNR on both consoles.
 - Implement gateway packet receiver/decoder and serial diagnostics.
 - Add ACK schema, receive window, retry limit, and retry flag.
 - Log RSSI/SNR, duplicates, malformed packets, and sequence gaps.
 - Range-test and select compliant frequency/SF/power settings.
 
 Exit: reliable delivery over the real lake-to-house path with diagnosable loss.
+
+The RAK4631 is now the preferred lake-node controller because it omits the
+unneeded display and offers a modular, low-power platform. The existing Heltec
+node implementation remains useful as a reference and fallback while sensor
+acquisition is ported to the RAK. GPS integration is explicitly deferred until
+the core sensor, radio, and power path are validated; a fixed installation does
+not need a continuous GPS energy cost.
 
 ## Milestone 4 — MQTT gateway
 

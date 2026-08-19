@@ -6,3 +6,4 @@ firmware/**/include/lake_node_config.h
 firmware/**/include/secrets.h
 *.pyc
 __pycache__/
+backups/

@@ -1,6 +1,7 @@
 # LoRa Lake-Level Monitor
 
-Battery-powered lake-level monitoring with a Heltec WiFi LoRa 32 V3/V3.2, a
+Battery-powered lake-level monitoring with a RAKwireless WisBlock RAK4631 lake
+node and a Heltec WiFi LoRa 32 V3/V3.2 gateway, a
 4–20 mA submersible pressure transmitter, a waterproof DS18B20 water-temperature
 probe, and a house-side LoRa/MQTT gateway.
 
@@ -12,6 +13,9 @@ packet and publish retained JSON state to MQTT.
 ## Status
 
 Early bench firmware. The initial node implementation includes:
+
+- A verified bidirectional 915 MHz RAK4631-to-Heltec bench link with sequence
+  numbers, ACKs, RSSI, and SNR diagnostics.
 
 - Vext power sequencing on GPIO36.
 - ADS1115 acquisition on GPIO4/GPIO5 with trimmed-mean filtering.
@@ -31,7 +35,8 @@ Heltec board revision.
 
 | Function | Part / setting |
 |---|---|
-| Controller/radio | Heltec WiFi LoRa 32 V3/V3.2, US 902–928 MHz version |
+| Lake controller/radio | RAKwireless WisBlock RAK4631, US915 version |
+| Bench gateway | Heltec WiFi LoRa 32 V3/V3.2, US 902–928 MHz version |
 | ADC | ADS1115 at `0x48`, ±4.096 V, 128 SPS |
 | Current shunt | 100 Ω, 0.1% |
 | Sensor supply | 3.3 V Vext to adjustable 24 V boost converter |
@@ -64,6 +69,20 @@ pio device monitor --port /dev/cu.usbserial-0001 --baud 115200
 It tests identity, Vext switching, SX1262 initialization/sleep, and an optional
 10-second timer deep-sleep cycle. It never sends an RF packet.
 
+With antennas attached to both boards, the bidirectional link test can be
+built and flashed with:
+
+```sh
+pio run -e heltec_link_test -t upload --upload-port /dev/cu.usbserial-0001
+pio run -e rak_link_test -t upload --upload-port /dev/cu.usbmodem11421201
+pio device monitor --port /dev/cu.usbserial-0001 --baud 115200
+pio device monitor --port /dev/cu.usbmodem11421201 --baud 115200
+```
+
+Serial device names may change after reconnecting. The RAK transmits numbered
+test frames every three seconds; the Heltec receives and acknowledges them.
+See [docs/link-test.md](docs/link-test.md) for settings and the validated result.
+
 The firmware defaults are intentionally explicit in
 [`firmware/node/include/config.example.h`](firmware/node/include/config.example.h).
 Copy it to `lake_node_config.h` only when local overrides are needed;
@@ -76,6 +95,8 @@ defaults when no override exists.
 common/                  Shared packet and measurement code
 firmware/node/           Battery-node firmware
 firmware/gateway/        Gateway placeholder for the next firmware milestone
+firmware/rak_link_test/  RAK4631 LoRa transmitter/ACK test
+firmware/heltec_link_test/ Heltec LoRa receiver/ACK test
 docs/                    Design, wiring, calibration, deployment, and plan
 scripts/                 Host test and later calibration/power tools
 test/                    Native C++ tests
