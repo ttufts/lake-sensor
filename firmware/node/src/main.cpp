@@ -115,8 +115,9 @@ lake::Measurement acquire_measurement(uint16_t& flags, float& temperature_c) {
   pinMode(node_pins::kI2cScl, INPUT);
   sensor_power(false);
 
-  const lake::Calibration calibration{node_config::kCalibrationSlopeMPerV,
-                                      node_config::kCalibrationOffsetM};
+  lake::Calibration calibration{};
+  calibration.slope_m_per_v = node_config::kCalibrationSlopeMPerV;
+  calibration.offset_m = node_config::kCalibrationOffsetM;
   lake::Measurement measurement = lake::convert_measurement(
       mean, stddev, node_config::kShuntOhms, calibration);
   flags |= measurement.flags;

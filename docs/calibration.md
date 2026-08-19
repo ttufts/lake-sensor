@@ -11,7 +11,7 @@ depth_m = slope_m_per_v * sense_v + offset_m
 
 Inspect residuals before considering nonlinear correction; unexpected
 nonlinearity is more likely a sensor, installation, vent, or power problem.
-Copy the accepted coefficients into a local `config.h` derived from
+Copy the accepted coefficients into a local `lake_node_config.h` derived from
 `config.example.h` and preserve the calibration dataset outside firmware.
 
 ## Installation datum

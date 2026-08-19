@@ -53,10 +53,22 @@ pio run -e lake_node
 ./scripts/run_host_tests.sh
 ```
 
+With only a Heltec V3 connected, the non-transmitting diagnostic image can be
+built, flashed, and monitored with:
+
+```sh
+pio run -e heltec_diagnostic -t upload --upload-port /dev/cu.usbserial-0001
+pio device monitor --port /dev/cu.usbserial-0001 --baud 115200
+```
+
+It tests identity, Vext switching, SX1262 initialization/sleep, and an optional
+10-second timer deep-sleep cycle. It never sends an RF packet.
+
 The firmware defaults are intentionally explicit in
 [`firmware/node/include/config.example.h`](firmware/node/include/config.example.h).
-Copy it to `config.h` only when local overrides are needed; `config.h` is ignored
-by Git. The source builds with the example defaults when no override exists.
+Copy it to `lake_node_config.h` only when local overrides are needed;
+`lake_node_config.h` is ignored by Git. The source builds with the example
+defaults when no override exists.
 
 ## Repository map
 
