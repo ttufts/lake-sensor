@@ -89,6 +89,11 @@ Serial device names may change after reconnecting. The RAK transmits numbered
 test frames every three seconds; the Heltec receives and acknowledges them.
 See [docs/link-test.md](docs/link-test.md) for settings and the validated result.
 
+Complete environment, configuration, build, flash, recovery, and serial-monitor
+instructions are in [docs/build-and-flash.md](docs/build-and-flash.md). The
+tracked/local configuration inventory is in
+[docs/configuration.md](docs/configuration.md).
+
 For the MQTT gateway, copy the example configuration and fill in local values:
 
 ```sh
@@ -105,6 +110,8 @@ The gateway also publishes retained Home Assistant MQTT Discovery records when
 it first sees a node after boot. Home Assistant groups the resulting level,
 temperature, battery, loop-current, radio, status, and sequence entities under
 one `Lake Monitor Node <id>` device.
+The exact native-card dashboard and InfluxDB allowlist used by the running Home
+Assistant instance are preserved under [home-assistant/](home-assistant/).
 
 The firmware defaults are intentionally explicit in
 [`firmware/node/include/config.example.h`](firmware/node/include/config.example.h).
@@ -117,11 +124,12 @@ defaults when no override exists.
 ```text
 common/                  Shared packet and measurement code
 firmware/node/           Battery-node firmware
-firmware/gateway/        Gateway placeholder for the next firmware milestone
+firmware/gateway/        Heltec Wi-Fi/MQTT/Home Assistant gateway
 firmware/rak_link_test/  RAK4631 LoRa transmitter/ACK test
 firmware/heltec_link_test/ Heltec LoRa receiver/ACK test
 firmware/rak_mock_node/   Potentiometer/DHT22 sensor simulator
 docs/                    Design, wiring, calibration, deployment, and plan
+home-assistant/          Reproducible dashboard and recorder/export config
 scripts/                 Host test and later calibration/power tools
 test/                    Native C++ tests
 ```

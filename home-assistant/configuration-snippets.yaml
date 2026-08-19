@@ -1,0 +1,9 @@
+# Home Assistant Recorder records all lake entities by default when no
+# restrictive recorder include/exclude policy is configured.
+
+# Merge this glob into the existing influxdb.include.entity_globs list so every
+# current and future Lake Monitor Node 1 sensor is available to Grafana.
+influxdb:
+  include:
+    entity_globs:
+      - sensor.lake_monitor_node_1_*
