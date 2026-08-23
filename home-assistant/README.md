@@ -6,8 +6,10 @@ No manual MQTT sensor YAML is required.
 ## Entities
 
 - `sensor.lake_monitor_node_1_lake_level`
+- `sensor.lake_monitor_node_1_lake_level_inches`
 - `sensor.lake_monitor_node_1_temperature`
 - `sensor.lake_monitor_node_1_battery_voltage`
+- `sensor.lake_monitor_node_1_battery`
 - `sensor.lake_monitor_node_1_loop_current`
 - `sensor.lake_monitor_node_1_lora_rssi`
 - `sensor.lake_monitor_node_1_lora_snr`

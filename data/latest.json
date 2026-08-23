@@ -1,0 +1,12 @@
+{
+  "timestamp_utc": "2026-08-23T02:50:00Z",
+  "depth_in": "15.63",
+  "temperature_f": "81.28",
+  "battery_v": "4.091",
+  "battery_pct": "92",
+  "loop_ma": "4.973",
+  "rssi_dbm": "-102.5",
+  "snr_db": "-10.62",
+  "status_flags": "",
+  "sample_count": 6
+}

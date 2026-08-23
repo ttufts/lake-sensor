@@ -1,151 +1,118 @@
 # LoRa Lake-Level Monitor
 
-Battery-powered lake-level monitoring with a RAKwireless WisBlock RAK4631 lake
-node and a Heltec WiFi LoRa 32 V3/V3.2 gateway, a
-4–20 mA submersible pressure transmitter, a waterproof DS18B20 water-temperature
-probe, and a house-side LoRa/MQTT gateway.
+A field-tested lake monitor built around a RAKwireless RAK4631/RAK19003 sensor
+node and a Heltec WiFi LoRa 32 V3 house gateway. The lake node measures water
+depth, water temperature, battery state, and radio diagnostics. The gateway
+receives raw 915 MHz LoRa packets and publishes retained MQTT state plus Home
+Assistant Discovery records over Wi-Fi.
 
-The lake node wakes every 15 minutes, powers the sensor and ADS1115 through the
-Heltec's switched Vext rail, filters the pressure reading, transmits a compact
-binary LoRa packet, and returns to deep sleep. The gateway phase will decode the
-packet and publish retained JSON state to MQTT.
+## Current status
 
-## Status
+The complete system is operating in the lake. A 2026-08-22 field check measured
+about 16 inches with a ruler while the node reported 15.47 inches; reference
+water temperature was about 81 °F while the node reported 81.5 °F. A full
+USB-disconnected battery endurance run began at 21:42 EDT using the current
+1100 mAh protected Li-ion pack.
 
-Early bench firmware. The initial node implementation includes:
+Current limitations:
 
-- A verified bidirectional 915 MHz RAK4631-to-Heltec bench link with sequence
-  numbers, ACKs, RSSI, and SNR diagnostics.
-- Heltec gateway firmware that validates packets, acknowledges them, joins
-  Wi-Fi, and publishes retained JSON state and availability over MQTT.
-- RAK mock-node firmware using a potentiometer for depth and a DHT22 for live
-  temperature while the production sensors are unavailable.
+- The pressure loop and 24 V boost remain continuously powered, so this is an
+  endurance-test build rather than the final low-power design.
+- The pressure transmitter's atmospheric reference must remain open and dry.
+  A membrane enclosure vent is planned before fully sealing the box.
+- Calibration constants are specific to the installed pressure and temperature
+  probes and must be rechecked after component replacement.
 
-- Vext power sequencing on GPIO36.
-- ADS1115 acquisition on GPIO4/GPIO5 with trimmed-mean filtering.
-- 4–20 mA conversion, calibration, and fault flags.
-- DS18B20 water-temperature acquisition during the pressure warm-up window.
-- V3.2 battery-divider sampling behind a compile-time setting.
-- Explicit, little-endian version-1 packet serialization.
-- SX1262 transmission through RadioLib and timer deep sleep.
-- Native host tests for protocol and measurement logic.
+## Hardware
 
-Hardware validation is required before connecting the pressure sensor. In
-particular, adjust and load-test the boost converter at 24.0 V first, verify the
-sensor polarity, attach a 915 MHz antenna before transmitting, and confirm the
-Heltec board revision.
-
-## Hardware baseline
-
-| Function | Part / setting |
+| Function | Installed hardware |
 |---|---|
-| Lake controller/radio | RAKwireless WisBlock RAK4631, US915 version |
-| Bench gateway | Heltec WiFi LoRa 32 V3/V3.2, US 902–928 MHz version |
-| ADC | ADS1115 at `0x48`, ±4.096 V, 128 SPS |
-| Current shunt | 100 Ω, 0.1% |
-| Sensor supply | 3.3 V Vext to adjustable 24 V boost converter |
-| Sensor | Two-wire, loop-powered 4–20 mA, nominal 0–5 m |
-| Temperature | Externally powered waterproof DS18B20 probe on GPIO6 |
-| Battery | One protected 1S 18650 |
-| Initial interval | 15 minutes |
+| Lake controller/radio | RAK4631 US915 on RAK19003 base |
+| Gateway | Heltec WiFi LoRa 32 V3/V3.2, US915 |
+| Pressure ADC | ADS1115 at `0x48`, A0 input |
+| Pressure loop | 0–5 m two-wire 4–20 mA transmitter, 100 Ω shunt |
+| Loop supply | MT3608 adjusted to 24.0 V, inline with three-wire pressure harness |
+| Temperature | Waterproof DS18B20-compatible probe with 5.1 kΩ pull-up |
+| Battery | Protected 1100 mAh 1S Li-ion on the RAK19003 battery port |
+| Telemetry | Raw LoRa → Heltec → Wi-Fi/MQTT → Home Assistant/InfluxDB |
 
-See [docs/wiring.md](docs/wiring.md) before assembling hardware and
-[docs/design.md](docs/design.md) for system decisions and acceptance criteria.
-The complete parts list and current sourcing notes are in [docs/bom.md](docs/bom.md).
-The temporary DHT22 and potentiometer setup is in
-[docs/mock-sensors.md](docs/mock-sensors.md).
+Start with the [complete hardware build walkthrough](docs/hardware-build.md),
+then consult the [exact wiring/net map](docs/wiring.md), [BOM](docs/bom.md), and
+[calibration record](docs/calibration.md). The perfboard diagram in the build
+guide reflects the current soldered layout; its legacy `DHT22` and `POT` labels
+are mapped to the production DS18B20 and pressure harness in the accompanying
+text.
 
-## Build and test
+## Firmware
 
-Install [PlatformIO](https://platformio.org/), then:
+The production RAK image currently uses the historical PlatformIO environment
+name `rak_mock_node`; it now reads the real ADS1115 pressure channel,
+DS18B20-compatible probe, and battery ADC. The house gateway uses `gateway`.
 
 ```sh
-pio run -e lake_node
+pio run -e rak_mock_node
+pio run -e gateway
 ./scripts/run_host_tests.sh
 ```
 
-With only a Heltec V3 connected, the non-transmitting diagnostic image can be
-built, flashed, and monitored with:
+Flash with the USB device paths shown by `pio device list`:
 
 ```sh
-pio run -e heltec_diagnostic -t upload --upload-port /dev/cu.usbserial-0001
-pio device monitor --port /dev/cu.usbserial-0001 --baud 115200
+pio run -e rak_mock_node -t upload --upload-port /dev/cu.usbmodemXXXX
+pio run -e gateway -t upload --upload-port /dev/cu.usbserial-XXXX
 ```
 
-It tests identity, Vext switching, SX1262 initialization/sleep, and an optional
-10-second timer deep-sleep cycle. It never sends an RF packet.
+The RAK may require a reset or double-reset to expose its bootloader. Always
+attach both 915 MHz antennas before operating the radios. See
+[build and flashing instructions](docs/build-and-flash.md) for recovery,
+configuration, and serial-monitor details.
 
-With antennas attached to both boards, the bidirectional link test can be
-built and flashed with:
+## MQTT and Home Assistant
 
-```sh
-pio run -e heltec_link_test -t upload --upload-port /dev/cu.usbserial-0001
-pio run -e rak_link_test -t upload --upload-port /dev/cu.usbmodem11421201
-pio device monitor --port /dev/cu.usbserial-0001 --baud 115200
-pio device monitor --port /dev/cu.usbmodem11421201 --baud 115200
+The gateway publishes node state to:
+
+```text
+lake-monitor/node/1/state
 ```
 
-Serial device names may change after reconnecting. The RAK transmits numbered
-test frames every three seconds; the Heltec receives and acknowledges them.
-See [docs/link-test.md](docs/link-test.md) for settings and the validated result.
+Its JSON includes calibrated depth in metres and inches, temperature, battery
+voltage and percentage, pressure-loop current, LoRa RSSI/SNR, flags, and packet
+sequence. It also publishes retained Home Assistant MQTT Discovery messages.
+Reproducible dashboard and InfluxDB configuration are under
+[`home-assistant/`](home-assistant/).
 
-Complete environment, configuration, build, flash, recovery, and serial-monitor
-instructions are in [docs/build-and-flash.md](docs/build-and-flash.md). The
-tracked/local configuration inventory is in
-[docs/configuration.md](docs/configuration.md).
+## Public data
 
-For the MQTT gateway, copy the example configuration and fill in local values:
+Five-minute production summaries are available under [`data/`](data/README.md).
+The first recoverable record follows the intentional Home Assistant test-data
+purge at `2026-08-23T01:48:37Z`. A Docker Swarm exporter publishes each completed
+UTC day to GitHub; see [public-data operations](docs/public-data.md).
 
-```sh
-cp firmware/gateway/include/gateway_config.example.h \
-  firmware/gateway/include/gateway_config.h
-pio run -e gateway
-pio run -e gateway -t upload --upload-port /dev/cu.usbserial-0001
-```
+Direct links after the GitHub mirror is published:
 
-`gateway_config.h` is ignored by Git. Valid node packets are published as
-retained JSON to `lake-monitor/node/<node-id>/state`; gateway status is retained
-at `lake-monitor/gateway/<gateway-id>/availability`.
-The gateway also publishes retained Home Assistant MQTT Discovery records when
-it first sees a node after boot. Home Assistant groups the resulting level,
-temperature, battery, loop-current, radio, status, and sequence entities under
-one `Lake Monitor Node <id>` device.
-The exact native-card dashboard and InfluxDB allowlist used by the running Home
-Assistant instance are preserved under [home-assistant/](home-assistant/).
-
-The firmware defaults are intentionally explicit in
-[`firmware/node/include/config.example.h`](firmware/node/include/config.example.h).
-Copy it to `lake_node_config.h` only when local overrides are needed;
-`lake_node_config.h` is ignored by Git. The source builds with the example
-defaults when no override exists.
+- [Latest exported reading](https://github.com/ttufts/lake-sensor/blob/main/data/latest.json)
+- [August 23, 2026 data](https://github.com/ttufts/lake-sensor/blob/main/data/2026/08/2026-08-23.csv)
 
 ## Repository map
 
 ```text
-common/                  Shared packet and measurement code
-firmware/node/           Battery-node firmware
-firmware/gateway/        Heltec Wi-Fi/MQTT/Home Assistant gateway
-firmware/rak_link_test/  RAK4631 LoRa transmitter/ACK test
-firmware/heltec_link_test/ Heltec LoRa receiver/ACK test
-firmware/rak_mock_node/   Potentiometer/DHT22 sensor simulator
-docs/                    Design, wiring, calibration, deployment, and plan
-home-assistant/          Reproducible dashboard and recorder/export config
-scripts/                 Host test and later calibration/power tools
-test/                    Native C++ tests
+common/                         Shared packet and measurement code
+firmware/rak_mock_node/         Production RAK4631 lake-node firmware
+firmware/gateway/               Heltec Wi-Fi/MQTT gateway firmware
+firmware/*_test/                Hardware and radio diagnostic images
+docs/                           Build, wiring, calibration, and operations docs
+home-assistant/                 Dashboard and recorder/InfluxDB configuration
+data/                           Public five-minute telemetry archive
+deploy/public-data-exporter/    Docker Swarm exporter
+scripts/                        Exporter and host-test tools
+test/                           Native protocol/measurement tests
 ```
-
-## Roadmap
-
-1. Bench-validate Vext, boost startup, ADS1115 readings, and warm-up time.
-2. Complete and range-test the LoRa protocol with ACK/retry and a gateway.
-3. Publish validated readings to MQTT with Wi-Fi recovery and diagnostics.
-4. Measure full-cycle energy, calibrate the sensor, and deploy outdoors.
-
-The detailed, issue-oriented roadmap is in [docs/plan.md](docs/plan.md).
 
 ## Safety
 
-Use a protected cell, verify the SH1.25 battery-lead polarity with a multimeter,
-never connect cells in series to the Heltec, and never connect the boost's 24 V
-output to the Heltec or ADS1115. Keep the sensor vent dry and above flood level
-if the transmitter is vented.
+Verify every battery JST's polarity with a multimeter before connection. Use a
+protected 1S cell, attach antennas before transmitting, and never connect the
+boost converter's 24 V output to the RAK, ADS1115, or temperature probe. Keep
+every conductor splice separately insulated. Keep the transmitter's atmospheric
+reference dry, unpinched, and connected to outside pressure through a proper
+hydrophobic enclosure vent.

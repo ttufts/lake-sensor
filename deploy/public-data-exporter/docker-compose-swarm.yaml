@@ -1,0 +1,28 @@
+services:
+  exporter:
+    image: localhost/lake-data-exporter:latest
+    environment:
+      HA_URL: https://smart.tufts.network
+      REPO_DIR: /state/repo
+      REPO_URL: git@github.com:ttufts/lake-sensor.git
+      RUN_HOUR_UTC: "0"
+      RUN_MINUTE_UTC: "10"
+    secrets:
+      - lake_data_ha_token
+      - lake_data_github_ssh_key
+    volumes:
+      - /home/tom/docker_data/lake_data_exporter:/state
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 30s
+      placement:
+        constraints:
+          - node.hostname == valkyrie01
+
+secrets:
+  lake_data_ha_token:
+    external: true
+  lake_data_github_ssh_key:
+    external: true

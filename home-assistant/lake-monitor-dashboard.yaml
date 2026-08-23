@@ -9,23 +9,29 @@ views:
         square: false
         cards:
           - type: gauge
-            entity: sensor.lake_monitor_node_1_lake_level
-            name: Lake Level
+            entity: sensor.lake_monitor_node_1_lake_level_inches
+            name: Lake Level (inches)
             needle: true
             min: 0
-            max: 16.5
+            max: 60
           - type: gauge
             entity: sensor.lake_monitor_node_1_temperature
             name: Water Temperature
             needle: true
             min: 32
             max: 100
+          - type: gauge
+            entity: sensor.lake_monitor_node_1_battery
+            name: Battery
+            needle: true
+            min: 0
+            max: 100
       - type: history-graph
         title: Lake Level — Last 72 Hours
         hours_to_show: 72
         refresh_interval: 60
         entities:
-          - entity: sensor.lake_monitor_node_1_lake_level
+          - entity: sensor.lake_monitor_node_1_lake_level_inches
             name: Lake Level
       - type: history-graph
         title: Temperature — Last 72 Hours
@@ -41,7 +47,7 @@ views:
         chart_type: line
         stat_types: [min, mean, max]
         entities:
-          - entity: sensor.lake_monitor_node_1_lake_level
+          - entity: sensor.lake_monitor_node_1_lake_level_inches
             name: Lake Level
       - type: statistics-graph
         title: Temperature — 30 Day Trend
@@ -58,6 +64,8 @@ views:
         entities:
           - entity: sensor.lake_monitor_node_1_battery_voltage
             name: Battery Voltage
+          - entity: sensor.lake_monitor_node_1_battery
+            name: Battery Percentage
           - entity: sensor.lake_monitor_node_1_loop_current
             name: Loop Current
           - entity: sensor.lake_monitor_node_1_lora_rssi
