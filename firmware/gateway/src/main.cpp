@@ -41,14 +41,37 @@ struct DiscoverySensor {
 
 constexpr DiscoverySensor kDiscoverySensors[] = {
     {"depth", "Lake Level", "depth_m", "m", "distance", "measurement", ""},
+    {"depth_inches", "Lake Level (inches)", "depth_in", "in", "distance", "measurement", ""},
     {"temperature", "Temperature", "temperature_c", "°C", "temperature", "measurement", ""},
     {"battery", "Battery Voltage", "battery_v", "V", "voltage", "measurement", "diagnostic"},
+    {"battery_percent", "Battery", "battery_pct", "%", "battery", "measurement", "diagnostic"},
     {"loop_current", "Loop Current", "loop_ma", "mA", "current", "measurement", "diagnostic"},
     {"rssi", "LoRa RSSI", "rssi_dbm", "dBm", "signal_strength", "measurement", "diagnostic"},
     {"snr", "LoRa SNR", "snr_db", "dB", "", "measurement", "diagnostic"},
     {"flags", "Status Flags", "flags", "", "", "", "diagnostic"},
     {"sequence", "Sequence", "sequence", "", "", "", "diagnostic"},
 };
+
+float estimate_battery_percent(float voltage) {
+  // Approximate rested single-cell Li-ion state of charge. The live reading can
+  // shift under sensor/boost-converter load, so this is a trend indicator.
+  struct Point { float volts; float percent; };
+  constexpr Point curve[] = {
+      {3.20F, 0.0F}, {3.50F, 10.0F}, {3.70F, 50.0F},
+      {3.85F, 70.0F}, {4.00F, 85.0F}, {4.20F, 100.0F},
+  };
+  if (voltage <= curve[0].volts) return curve[0].percent;
+  for (size_t i = 1; i < sizeof(curve) / sizeof(curve[0]); ++i) {
+    if (voltage <= curve[i].volts) {
+      const float fraction =
+          (voltage - curve[i - 1].volts) /
+          (curve[i].volts - curve[i - 1].volts);
+      return curve[i - 1].percent +
+             fraction * (curve[i].percent - curve[i - 1].percent);
+    }
+  }
+  return 100.0F;
+}
 
 void make_topic(char* out, size_t size, uint8_t node_id, const char* suffix) {
   snprintf(out, size, "%s/node/%u/%s", gateway_config::kTopicPrefix, node_id,
@@ -146,13 +169,15 @@ void publish_packet(const lake::PacketV1& packet, float rssi, float snr) {
   char payload[384];
   make_topic(topic, sizeof(topic), packet.node_id, "state");
   snprintf(payload, sizeof(payload),
-           "{\"node_id\":%u,\"sequence\":%lu,\"depth_m\":%.3f,"
-           "\"sense_v\":%.3f,\"loop_ma\":%.3f,\"battery_v\":%.3f,"
+           "{\"node_id\":%u,\"sequence\":%lu,\"depth_m\":%.3f,\"depth_in\":%.2f,"
+           "\"sense_v\":%.3f,\"loop_ma\":%.3f,\"battery_v\":%.3f,\"battery_pct\":%.0f,"
            "\"temperature_c\":%.2f,\"flags\":%u,\"rssi_dbm\":%.1f,"
            "\"snr_db\":%.2f}",
            packet.node_id, static_cast<unsigned long>(packet.sequence),
-           packet.depth_mm / 1000.0F, packet.sense_mv / 1000.0F,
+           packet.depth_mm / 1000.0F, packet.depth_mm / 25.4F,
+           packet.sense_mv / 1000.0F,
            packet.loop_ua / 1000.0F, packet.battery_mv / 1000.0F,
+           estimate_battery_percent(packet.battery_mv / 1000.0F),
            packet.temperature_centi_c / 100.0F, packet.flags, rssi, snr);
   const bool published = mqtt.publish(topic, payload, true);
   Serial.printf("mqtt publish %s: %s\n", topic, published ? "ok" : "failed");
