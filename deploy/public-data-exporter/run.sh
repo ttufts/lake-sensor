@@ -20,7 +20,10 @@ git config user.email "lake-data-exporter@tufts.network"
 
 export_once() {
   git pull --rebase
-  /usr/local/bin/export_public_data.py --output-root data
+  if ! /usr/local/bin/export_public_data.py --output-root data; then
+    echo "No export was produced; leaving the repository unchanged" >&2
+    return 0
+  fi
   git add data
   if ! git diff --cached --quiet; then
     git commit -m "data: publish completed UTC day"

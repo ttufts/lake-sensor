@@ -8,8 +8,12 @@ services:
       RUN_HOUR_UTC: "0"
       RUN_MINUTE_UTC: "10"
     secrets:
-      - lake_data_ha_token
-      - lake_data_github_ssh_key
+      - source: lake_data_ha_token
+        target: lake_data_ha_token
+        mode: 0400
+      - source: lake_data_github_ssh_key
+        target: lake_data_github_ssh_key
+        mode: 0400
     volumes:
       - /home/tom/docker_data/lake_data_exporter:/state
     deploy:
