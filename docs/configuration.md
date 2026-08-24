@@ -14,6 +14,8 @@ belongs in Git.
 | `firmware/**/include/secrets.h` | **No** | Reserved ignored secret file pattern |
 | `home-assistant/lake-monitor-dashboard.yaml` | Yes | Native Lovelace dashboard definition, no secrets |
 | `home-assistant/configuration-snippets.yaml` | Yes | InfluxDB entity allowlist and recorder notes |
+| `home-assistant/lake-data-forwarding.yaml` | Yes | MQTT-to-HTTPS forwarding configuration, no secrets |
+| Home Assistant `/config/secrets.yaml` | **No** | Public lake API bearer authorization value |
 | `backups/` | **No** | Local RAK/Meshtastic backup that may contain secrets |
 
 `gateway_config.example.h` defines:
@@ -22,7 +24,6 @@ belongs in Git.
 - MQTT hostname and port.
 - MQTT username and password.
 - MQTT topic prefix.
-- HTTPS telemetry endpoint and bearer API key.
 - Stable gateway/client identifier.
 
 The active bench gateway is configured locally for `Dynamite-IOT` and the MQTT

@@ -1,17 +1,20 @@
 # Public Data Delivery
 
-## Direct HTTP delivery
+## Home Assistant HTTP forwarding
 
-The Heltec gateway delivers every accepted LoRa reading to both MQTT/Home
-Assistant and the external HTTPS endpoint. HTTP delivery batches its bounded
-background queue so TLS setup and API overhead do not block radio ACKs or MQTT.
-It uses a gateway-generated UTC timestamp, TLS certificate validation, bearer
-authentication, and up to three bounded retries. The API key is held only in
-the ignored `firmware/gateway/include/gateway_config.h` file.
+The Heltec gateway publishes each accepted LoRa reading to MQTT with a UTC
+`timestamp_utc`. Home Assistant consumes the same MQTT packet used by its
+entities and forwards it to the external HTTPS endpoint. This keeps TLS and the
+API credential off the gateway while avoiding the IoT VLAN's outbound internet
+restriction. The credential is held only in Home Assistant's `secrets.yaml`.
 
 The payload fields are `timestamp_utc`, `depth_in`, `temperature_f`,
 `battery_v`, `battery_pct`, `loop_ma`, `rssi_dbm`, `snr_db`, `status_flags`,
 and `sample_count`.
+
+See [`home-assistant/lake-data-forwarding.yaml`](../home-assistant/lake-data-forwarding.yaml)
+for the `rest_command` and MQTT-triggered automation, and
+[`home-assistant/README.md`](../home-assistant/README.md) for installation.
 
 ## Retired GitHub exporter
 
@@ -22,10 +25,10 @@ five-minute summaries suitable for sharing and long-term analysis.
 ## Schedule and recovery
 
 The retained `lake_data_exporter` Docker Swarm stack on `valkyrie01` previously exported the
-previous UTC day at 00:10 UTC and also runs once whenever its container starts,
+previous UTC day at 00:10 UTC and also ran once whenever its container started,
 which repairs a missed export after an outage. It pulls before generating data,
 commits only when files changed, and pushes through a dedicated mounted SSH
-secret. Its service is intentionally scaled to zero after direct HTTP delivery
+secret. Its service is intentionally scaled to zero after HA HTTP forwarding
 was selected. Restore it with:
 
 ```sh

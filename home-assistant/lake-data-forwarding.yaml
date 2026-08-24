@@ -1,0 +1,50 @@
+# Merge these two top-level blocks into Home Assistant's configuration.
+# Store the credential in secrets.yaml as documented in README.md.
+rest_command:
+  publish_lake_reading:
+    url: https://lake.emiliamarie.net/api/v1/lake-level
+    method: POST
+    headers:
+      Authorization: !secret lake_api_authorization
+      Content-Type: application/json
+    payload: >-
+      {
+        "timestamp_utc": {{ timestamp_utc | to_json }},
+        "depth_in": {{ depth_in | float }},
+        "temperature_f": {{ ((temperature_c | float) * 9 / 5 + 32) | round(2) }},
+        "battery_v": {{ battery_v | float }},
+        "battery_pct": {{ battery_pct | float }},
+        "loop_ma": {{ loop_ma | float }},
+        "rssi_dbm": {{ rssi_dbm | float }},
+        "snr_db": {{ snr_db | float }},
+        "status_flags": {{ status_flags | string | to_json }},
+        "sample_count": 1
+      }
+    content_type: application/json
+    timeout: 20
+
+automation:
+  - id: lake_monitor_forward_readings
+    alias: Lake Monitor - forward readings
+    description: Forward each timestamped LoRa/MQTT reading to the public lake API.
+    mode: queued
+    max: 100
+    trigger:
+      - platform: mqtt
+        topic: lake-monitor/node/1/state
+    condition:
+      - condition: template
+        value_template: >-
+          {{ trigger.payload_json.timestamp_utc | default('') | length == 20 }}
+    action:
+      - action: rest_command.publish_lake_reading
+        data:
+          timestamp_utc: "{{ trigger.payload_json.timestamp_utc }}"
+          depth_in: "{{ trigger.payload_json.depth_in }}"
+          temperature_c: "{{ trigger.payload_json.temperature_c }}"
+          battery_v: "{{ trigger.payload_json.battery_v }}"
+          battery_pct: "{{ trigger.payload_json.battery_pct }}"
+          loop_ma: "{{ trigger.payload_json.loop_ma }}"
+          rssi_dbm: "{{ trigger.payload_json.rssi_dbm }}"
+          snr_db: "{{ trigger.payload_json.snr_db }}"
+          status_flags: "{{ trigger.payload_json.flags }}"

@@ -1,14 +1,11 @@
 #include <Arduino.h>
-#include <HTTPClient.h>
 #include <PubSubClient.h>
 #include <RadioLib.h>
 #include <SPI.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
 #include <time.h>
 
 #include "gateway_config_select.h"
-#include "letsencrypt_root_ye.h"
 #include "lake_protocol.h"
 #include "pins.h"
 
@@ -32,21 +29,6 @@ uint32_t last_mqtt_attempt_ms = 0;
 uint32_t last_sequence[256]{};
 bool sequence_seen[256]{};
 bool discovery_published[256]{};
-QueueHandle_t http_queue = nullptr;
-
-struct HttpReading {
-  uint32_t received_ms;
-  uint32_t received_epoch;
-  float depth_in;
-  float temperature_f;
-  float battery_v;
-  float battery_pct;
-  float loop_ma;
-  float rssi_dbm;
-  float snr_db;
-  uint16_t status_flags;
-};
-
 struct DiscoverySensor {
   const char* object_id;
   const char* name;
@@ -134,95 +116,10 @@ bool valid_wall_clock(time_t value) {
   return value >= 1735689600;
 }
 
-void iso_timestamp(const HttpReading& reading, char* out, size_t size) {
-  time_t timestamp = reading.received_epoch;
-  if (!valid_wall_clock(timestamp)) {
-    const time_t now = time(nullptr);
-    if (valid_wall_clock(now)) {
-      timestamp = now - (millis() - reading.received_ms) / 1000U;
-    }
-  }
+void iso_timestamp(time_t timestamp, char* out, size_t size) {
   struct tm utc {};
   gmtime_r(&timestamp, &utc);
   strftime(out, size, "%Y-%m-%dT%H:%M:%SZ", &utc);
-}
-
-bool post_http(const HttpReading* readings, size_t count) {
-  if (WiFi.status() != WL_CONNECTED || !valid_wall_clock(time(nullptr))) {
-    return false;
-  }
-  char authorization[192];
-  String payload;
-  payload.reserve(count * 256U + 2U);
-  payload += '[';
-  for (size_t i = 0; i < count; ++i) {
-    char timestamp[24];
-    char object[384];
-    const auto& reading = readings[i];
-    iso_timestamp(reading, timestamp, sizeof(timestamp));
-    snprintf(object, sizeof(object),
-             "%s{\"timestamp_utc\":\"%s\",\"depth_in\":%.2f,"
-             "\"temperature_f\":%.2f,\"battery_v\":%.3f,"
-             "\"battery_pct\":%.0f,\"loop_ma\":%.3f,"
-             "\"rssi_dbm\":%.1f,\"snr_db\":%.2f,"
-             "\"status_flags\":\"%u\",\"sample_count\":1}",
-             i ? "," : "", timestamp, reading.depth_in,
-             reading.temperature_f, reading.battery_v, reading.battery_pct,
-             reading.loop_ma, reading.rssi_dbm, reading.snr_db,
-             reading.status_flags);
-    payload += object;
-  }
-  payload += ']';
-  snprintf(authorization, sizeof(authorization), "Bearer %s",
-           gateway_config::kHttpApiKey);
-  WiFiClientSecure client;
-  client.setCACert(kLetsEncryptRootYe);
-  HTTPClient http;
-  http.setConnectTimeout(15000);
-  http.setTimeout(15000);
-  if (!http.begin(client, gateway_config::kHttpEndpoint)) return false;
-  http.addHeader("Authorization", authorization);
-  http.addHeader("Content-Type", "application/json");
-  const int status = http.POST(
-      reinterpret_cast<uint8_t*>(const_cast<char*>(payload.c_str())),
-      payload.length());
-  const String response = status > 0 ? http.getString() : String();
-  if (status < 0) {
-    char tls_error[160];
-    const int tls_code = client.lastError(tls_error, sizeof(tls_error));
-    Serial.printf("TLS error: code=%d detail=%s\n", tls_code, tls_error);
-  }
-  http.end();
-  const bool ok = status >= 200 && status < 300;
-  Serial.printf("http post: status=%d ok=%s response=%s\n", status,
-                ok ? "yes" : "no", response.c_str());
-  return ok;
-}
-
-void http_task(void*) {
-  constexpr size_t kBatchSize = 32;
-  HttpReading readings[kBatchSize]{};
-  for (;;) {
-    if (xQueueReceive(http_queue, &readings[0], portMAX_DELAY) != pdTRUE) {
-      continue;
-    }
-    // Amortize TLS setup and API overhead while keeping delivery latency low.
-    vTaskDelay(pdMS_TO_TICKS(20000));
-    size_t count = 1;
-    while (count < kBatchSize &&
-           xQueueReceive(http_queue, &readings[count], 0) == pdTRUE) {
-      ++count;
-    }
-    bool delivered = false;
-    for (uint8_t attempt = 0; attempt < 3; ++attempt) {
-      if ((delivered = post_http(readings, count))) break;
-      vTaskDelay(pdMS_TO_TICKS(5000U * (attempt + 1U)));
-    }
-    if (!delivered) {
-      Serial.println("HTTP endpoint unavailable; backing off for five minutes");
-      vTaskDelay(pdMS_TO_TICKS(300000));
-    }
-  }
 }
 
 bool publish_discovery(uint8_t node_id) {
@@ -276,16 +173,21 @@ bool publish_discovery(uint8_t node_id) {
 void publish_packet(const lake::PacketV1& packet, float rssi, float snr) {
   const float battery_v = packet.battery_mv / 1000.0F;
   const float battery_pct = estimate_battery_percent(battery_v);
+  const time_t now = time(nullptr);
+  char timestamp[24] = "";
+  if (valid_wall_clock(now)) iso_timestamp(now, timestamp, sizeof(timestamp));
   if (mqtt.connected() && publish_discovery(packet.node_id)) {
     char topic[128];
-    char payload[384];
+    char payload[448];
     make_topic(topic, sizeof(topic), packet.node_id, "state");
     snprintf(payload, sizeof(payload),
-           "{\"node_id\":%u,\"sequence\":%lu,\"depth_m\":%.3f,\"depth_in\":%.2f,"
+           "{\"timestamp_utc\":\"%s\",\"node_id\":%u,\"sequence\":%lu,"
+           "\"depth_m\":%.3f,\"depth_in\":%.2f,"
            "\"sense_v\":%.3f,\"loop_ma\":%.3f,\"battery_v\":%.3f,\"battery_pct\":%.0f,"
            "\"temperature_c\":%.2f,\"flags\":%u,\"rssi_dbm\":%.1f,"
            "\"snr_db\":%.2f}",
-           packet.node_id, static_cast<unsigned long>(packet.sequence),
+           timestamp, packet.node_id,
+           static_cast<unsigned long>(packet.sequence),
            packet.depth_mm / 1000.0F, packet.depth_mm / 25.4F,
            packet.sense_mv / 1000.0F,
            packet.loop_ua / 1000.0F, battery_v, battery_pct,
@@ -294,18 +196,7 @@ void publish_packet(const lake::PacketV1& packet, float rssi, float snr) {
     Serial.printf("mqtt publish %s: %s\n", topic,
                   published ? "ok" : "failed");
   } else {
-    Serial.println("mqtt offline; HTTP delivery still queued");
-  }
-
-  const time_t now = time(nullptr);
-  const HttpReading reading{
-      millis(), valid_wall_clock(now) ? static_cast<uint32_t>(now) : 0U,
-      packet.depth_mm / 25.4F,
-      packet.temperature_centi_c / 100.0F * 9.0F / 5.0F + 32.0F,
-      battery_v, battery_pct, packet.loop_ua / 1000.0F, rssi, snr,
-      packet.flags};
-  if (http_queue == nullptr || xQueueSend(http_queue, &reading, 0) != pdTRUE) {
-    Serial.println("http queue full; reading dropped");
+    Serial.println("mqtt offline; packet not published");
   }
 }
 }  // namespace
@@ -319,12 +210,6 @@ void setup() {
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   mqtt.setServer(gateway_config::kMqttHost, gateway_config::kMqttPort);
   mqtt.setBufferSize(1024);
-  http_queue = xQueueCreate(32, sizeof(HttpReading));
-  if (http_queue == nullptr ||
-      xTaskCreatePinnedToCore(http_task, "lake-http", 8192, nullptr, 1,
-                              nullptr, 0) != pdPASS) {
-    Serial.println("HTTP delivery task setup failed");
-  }
   radio_spi.begin(node_pins::kLoRaSck, node_pins::kLoRaMiso,
                   node_pins::kLoRaMosi, node_pins::kLoRaNss);
   const int state = radio.begin(kFrequencyMhz, kBandwidthKhz,
