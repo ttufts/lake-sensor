@@ -1,4 +1,19 @@
-# Public Data Export
+# Public Data Delivery
+
+## Direct HTTP delivery
+
+The Heltec gateway delivers every accepted LoRa reading to both MQTT/Home
+Assistant and the external HTTPS endpoint. HTTP delivery batches its bounded
+background queue so TLS setup and API overhead do not block radio ACKs or MQTT.
+It uses a gateway-generated UTC timestamp, TLS certificate validation, bearer
+authentication, and up to three bounded retries. The API key is held only in
+the ignored `firmware/gateway/include/gateway_config.h` file.
+
+The payload fields are `timestamp_utc`, `depth_in`, `temperature_f`,
+`battery_v`, `battery_pct`, `loop_ma`, `rssi_dbm`, `snr_db`, `status_flags`,
+and `sample_count`.
+
+## Retired GitHub exporter
 
 The public archive is stored under [`data/`](../data/README.md). Home Assistant
 and InfluxDB retain full-resolution operational telemetry; GitHub receives
@@ -6,11 +21,16 @@ five-minute summaries suitable for sharing and long-term analysis.
 
 ## Schedule and recovery
 
-The `lake_data_exporter` Docker Swarm stack runs on `valkyrie01`. It exports the
+The retained `lake_data_exporter` Docker Swarm stack on `valkyrie01` previously exported the
 previous UTC day at 00:10 UTC and also runs once whenever its container starts,
 which repairs a missed export after an outage. It pulls before generating data,
 commits only when files changed, and pushes through a dedicated mounted SSH
-secret.
+secret. Its service is intentionally scaled to zero after direct HTTP delivery
+was selected. Restore it with:
+
+```sh
+docker service scale lake_data_exporter_exporter=1
+```
 
 ## Secrets
 

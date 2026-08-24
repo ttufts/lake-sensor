@@ -22,6 +22,7 @@ belongs in Git.
 - MQTT hostname and port.
 - MQTT username and password.
 - MQTT topic prefix.
+- HTTPS telemetry endpoint and bearer API key.
 - Stable gateway/client identifier.
 
 The active bench gateway is configured locally for `Dynamite-IOT` and the MQTT

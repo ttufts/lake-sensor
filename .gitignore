@@ -2,6 +2,7 @@
 .vscode/
 .idea/
 .DS_Store
+.env
 firmware/**/include/lake_node_config.h
 firmware/**/include/secrets.h
 firmware/gateway/include/gateway_config.h
