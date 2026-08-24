@@ -29,14 +29,14 @@ automation:
     description: Forward each timestamped LoRa/MQTT reading to the public lake API.
     mode: queued
     max: 100
-    trigger:
-      - platform: mqtt
+    triggers:
+      - trigger: mqtt
         topic: lake-monitor/node/1/state
-    condition:
+    conditions:
       - condition: template
         value_template: >-
           {{ trigger.payload_json.timestamp_utc | default('') | length == 20 }}
-    action:
+    actions:
       - action: rest_command.publish_lake_reading
         data:
           timestamp_utc: "{{ trigger.payload_json.timestamp_utc }}"
