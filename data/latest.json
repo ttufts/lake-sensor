@@ -1,12 +1,12 @@
 {
-  "timestamp_utc": "2026-08-23T02:50:00Z",
-  "depth_in": "15.63",
-  "temperature_f": "81.28",
-  "battery_v": "4.091",
-  "battery_pct": "92",
-  "loop_ma": "4.973",
-  "rssi_dbm": "-102.5",
-  "snr_db": "-10.62",
+  "timestamp_utc": "2026-08-23T23:55:00Z",
+  "depth_in": "15.39",
+  "temperature_f": "81.50",
+  "battery_v": "3.608",
+  "battery_pct": "32",
+  "loop_ma": "4.955",
+  "rssi_dbm": "-94.0",
+  "snr_db": "-0.75",
   "status_flags": "",
-  "sample_count": 6
+  "sample_count": 11
 }
