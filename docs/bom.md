@@ -23,12 +23,23 @@
 
 | Qty. | Part | Reason |
 |---:|---|---|
-| 1 | Logic-level load switch or MOSFET stage | Switch the boost/pressure loop off between readings |
+| 1 | AO3401A P-channel MOSFET | High-side switch selected by the consolidated-board design |
+| 2 | 5.1 kΩ resistor | MOSFET gate series (`RG`) and switched-rail bleed (`RB`) |
+| 1 | 51 kΩ resistor | MOSFET gate pull-up/default-off (`RPU`) |
+| 3 | 100 nF capacitor | Gate ramp (`CG`), boost bypass (`CI`), and ADS A0 filter (`CF`) |
+| 1 | 1 kΩ resistor | ADS1115 A0 series filter (`RF`) |
+| 1 | Electrocookie Large 30 x 10 + 4-rail board | Consolidates RAK, ADS1115, boost, switch, filters, and connectors; see [build map](consolidated-board.md) |
+| 1 | JST-XH 3-pin connector | Consolidated-board DS18B20 connector |
+| 1 | JST-XH 2-pin connector | Consolidated-board 24 V pressure-loop connector |
 | 1 set | Calsgkspray/pingwave M12 breather vents, ASIN B0G1HLJVS3 | **Ordered prototype part:** four M12 x 1.5 pressure-equalization vents advertised as IP68; [Amazon](https://www.amazon.com/dp/B0G1HLJVS3). Listing says mounting hardware is included, but verify an O-ring and locknut are present before drilling. The known-specification alternative is the [TAKACHI PMF-12B](https://www.takachi-enclosure.com/products/PMF). |
-| 1 | 47–100 µF low-ESR capacitor | Boost input/startup reservoir if required by load testing |
-| 1 | 1 kΩ + 100 nF RC filter | Optional ADS1115 input-noise filter; not installed in the validated prototype |
+| DNF | Optional bulk capacitor at `CB` | Leave unpopulated initially; fit only if measured switched-rail sag requires it |
 | 1 | Larger protected battery or solar charging system | Required for multi-day deployment before power optimization |
 | 1 | Perforated stilling tube/guard | Protect diaphragm and reduce wave/debris effects while allowing pressure transfer |
+
+The 100 Ω shunt already listed in the prototype BOM is reused by the new
+layout, but the build map calls for a 1% metal-film part and routes it with a
+Kelvin ground reference. A 0.1%, low-temperature-coefficient part remains the
+preferred accuracy upgrade.
 
 ## Temperature-probe sourcing
 

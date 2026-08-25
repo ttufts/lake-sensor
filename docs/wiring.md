@@ -78,6 +78,11 @@ does **not** use the mapping initially assumed during bench testing; the working
 mapping is `PIN_SERIAL2_RX` / P0.19. This was verified electrically and in the
 field firmware.
 
+In the planned consolidated-board revision, `TXD` is reassigned as the
+AO3401A pressure-power switch control. See
+[consolidated-board.md](consolidated-board.md); do not apply that statement to
+the continuously powered field prototype described on this page.
+
 ## Exact jumper/net map
 
 The following rewrites the original mock-board net map using the production

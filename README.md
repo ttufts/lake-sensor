@@ -38,7 +38,11 @@ Current limitations:
 
 Start with the [complete hardware build walkthrough](docs/hardware-build.md),
 then consult the [exact wiring/net map](docs/wiring.md), [BOM](docs/bom.md), and
-[calibration record](docs/calibration.md). The perfboard diagram in the build
+[calibration record](docs/calibration.md). The planned low-power consolidated
+revision is documented in the [final-board build map](docs/consolidated-board.md)
+and its [authoritative PDF](docs/artifacts/lake-node-build-map.pdf). It adds the
+MOSFET-switched pressure supply and improved analog grounding but has not yet
+replaced the working field prototype. The perfboard diagram in the build
 guide reflects the current soldered layout; its legacy `DHT22` and `POT` labels
 are mapped to the production DS18B20 and pressure harness in the accompanying
 text.

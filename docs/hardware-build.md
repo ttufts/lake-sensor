@@ -3,6 +3,13 @@
 This walkthrough reproduces the field-tested system: a battery-powered
 RAK4631/RAK19003 lake node and a USB-powered Heltec V3 base station.
 
+For the next consolidated low-power build, use the
+[Lake Node Build Map](consolidated-board.md) and its
+[five-page assembly PDF](artifacts/lake-node-build-map.pdf). That revision moves
+the boost, shunt, filtering, connectors, and high-side MOSFET onto one
+Electrocookie Large board. It is currently a build target, while the steps
+below remain the validated field-prototype procedure.
+
 ## 1. Prepare the radio boards
 
 1. Install the RAK4631 on the RAK19003 and inspect the 40-pin board-to-board
